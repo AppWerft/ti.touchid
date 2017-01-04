@@ -1,6 +1,5 @@
 package ti.touchid;
 
-
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.hardware.fingerprint.FingerprintManager;
@@ -25,7 +24,8 @@ import org.appcelerator.kroll.common.Log;
 /**
  * Created by hpham on 4/11/16.
  */
-public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback {
+public class FingerPrintHelper extends
+		FingerprintManager.AuthenticationCallback {
 
 	protected KeyguardManager mKeyguardManager;
 	protected FingerprintManager mFingerprintManager;
@@ -37,7 +37,7 @@ public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback
 	protected FingerprintManager.CryptoObject mCryptoObject;
 	private static final String KEY_NAME = "appc_key";
 	private static final String SECRET_MESSAGE = "secret message";
-	private static String TAG = "FingerPrintHelper";
+	private static String TAG = TouchidModule.LCAT;
 	private KrollFunction callback;
 	private KrollObject krollObject;
 	protected boolean mSelfCancelled;
@@ -45,18 +45,21 @@ public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback
 	public FingerPrintHelper() {
 
 		Activity activity = TiApplication.getAppRootOrCurrentActivity();
-		mFingerprintManager = activity.getSystemService(FingerprintManager.class);
+		mFingerprintManager = activity
+				.getSystemService(FingerprintManager.class);
 		mKeyguardManager = activity.getSystemService(KeyguardManager.class);
 		try {
 			mKeyStore = KeyStore.getInstance("AndroidKeyStore");
-			mKeyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+			mKeyGenerator = KeyGenerator.getInstance(
+					KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
 			mCipher = Cipher.getInstance(KeyProperties.KEY_ALGORITHM_AES + "/"
 					+ KeyProperties.BLOCK_MODE_CBC + "/"
 					+ KeyProperties.ENCRYPTION_PADDING_PKCS7);
 			createKey();
-			
+
 		} catch (KeyStoreException e) {
-			throw new RuntimeException("Failed to get an instance of KeyStore", e);
+			throw new RuntimeException("Failed to get an instance of KeyStore",
+					e);
 		} catch (Exception e) {
 
 		}
@@ -78,7 +81,8 @@ public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback
 	}
 
 	public void startListening(KrollFunction callback, KrollObject obj) {
-		if (!(mFingerprintManager.isHardwareDetected() && mFingerprintManager.hasEnrolledFingerprints())) {
+		if (!(mFingerprintManager.isHardwareDetected() && mFingerprintManager
+				.hasEnrolledFingerprints())) {
 			return;
 		}
 		try {
@@ -94,22 +98,35 @@ public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback
 		this.krollObject = obj;
 		mCancellationSignal = new CancellationSignal();
 		mSelfCancelled = false;
-		mFingerprintManager
-				.authenticate(mCryptoObject, mCancellationSignal, 0 /* flags */, this, null);
+		mFingerprintManager.authenticate(mCryptoObject, mCancellationSignal,
+				0 /* flags */, this, null);
 	}
 
-	private void onError(String errMsg) {
+	private void onError(String errMsg, int code) {
+		Log.e(TAG, "errMsg=" + errMsg + "   code=" + code);
 		if (callback != null && krollObject != null) {
 			KrollDict dict = new KrollDict();
 			dict.put("success", false);
 			dict.put("error", errMsg);
+			dict.put("code", code);
+			callback.callAsync(krollObject, dict);
+		}
+	}
+
+	private void onHelp(String msg, int code) {
+		Log.e(TAG, "msg=" + msg + "   code=" + code);
+		if (callback != null && krollObject != null) {
+			KrollDict dict = new KrollDict();
+			dict.put("success", false);
+			dict.put("help", msg);
+			dict.put("code", code);
 			callback.callAsync(krollObject, dict);
 		}
 	}
 
 	/**
-	 * Tries to encrypt some data with the generated key in {@link #createKey} which is
-	 * only works if the user has just authenticated via fingerprint.
+	 * Tries to encrypt some data with the generated key in {@link #createKey}
+	 * which is only works if the user has just authenticated via fingerprint.
 	 */
 	private void tryEncrypt() {
 		try {
@@ -121,51 +138,59 @@ public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback
 				callback.callAsync(krollObject, dict);
 			}
 		} catch (Exception e) {
-			onError("Failed to encrypt the data with the generated key.");
+			onError("Failed to encrypt the data with the generated key.",
+					TouchidModule.FINGERPRINT_ERROR_FAILED_TO_ENCRYPT);
 		}
 	}
 
 	@Override
 	public void onAuthenticationError(int errMsgId, CharSequence errString) {
-		onError(errString.toString());
+		onError(errString.toString(), errMsgId);
+
 	}
 
 	@Override
 	public void onAuthenticationHelp(int helpMsgId, CharSequence helpString) {
 		Log.w(TAG, helpString.toString());
+		onHelp(helpString.toString(), helpMsgId);
 
 	}
 
 	@Override
 	public void onAuthenticationFailed() {
-		onError("Unable to recognize fingerprint");
+		onError("Unable to recognize fingerprint",
+				TouchidModule.FINGERPRINT_ERROR_AUTHENTICATION_FAILED);
 
 	}
 
 	@Override
-	public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+	public void onAuthenticationSucceeded(
+			FingerprintManager.AuthenticationResult result) {
 		tryEncrypt();
 	}
 
 	/**
-	 * Creates a symmetric key in the Android Key Store which can only be used after the user has
-	 * authenticated with fingerprint.
+	 * Creates a symmetric key in the Android Key Store which can only be used
+	 * after the user has authenticated with fingerprint.
 	 */
 	protected void createKey() {
-		// The enrolling flow for fingerprint. This is where you ask the user to set up fingerprint
-		// for your flow. Use of keys is necessary if you need to know if the set of
+		// The enrolling flow for fingerprint. This is where you ask the user to
+		// set up fingerprint
+		// for your flow. Use of keys is necessary if you need to know if the
+		// set of
 		// enrolled fingerprints has changed.
 		try {
 			mKeyStore.load(null);
-			// Set the alias of the entry in Android KeyStore where the key will appear
+			// Set the alias of the entry in Android KeyStore where the key will
+			// appear
 			// and the constrains (purposes) in the constructor of the Builder
 			mKeyGenerator.init(new KeyGenParameterSpec.Builder(KEY_NAME,
-					KeyProperties.PURPOSE_ENCRYPT |
-							KeyProperties.PURPOSE_DECRYPT)
+					KeyProperties.PURPOSE_ENCRYPT
+							| KeyProperties.PURPOSE_DECRYPT)
 					.setBlockModes(KeyProperties.BLOCK_MODE_CBC)
 					.setUserAuthenticationRequired(true)
-					.setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-					.build());
+					.setEncryptionPaddings(
+							KeyProperties.ENCRYPTION_PADDING_PKCS7).build());
 			mKeyGenerator.generateKey();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -173,7 +198,6 @@ public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback
 
 	}
 
-	
 	private boolean initCipher() {
 		try {
 			mKeyStore.load(null);
@@ -198,7 +222,7 @@ public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback
 			if (error.isEmpty()) {
 				error = error + "No enrolled fingerprints";
 			} else {
-				error = error +", and no enrolled fingerprints";
+				error = error + ", and no enrolled fingerprints";
 			}
 		}
 
@@ -211,5 +235,4 @@ public class FingerPrintHelper extends FingerprintManager.AuthenticationCallback
 		}
 		return response;
 	}
-
 }
