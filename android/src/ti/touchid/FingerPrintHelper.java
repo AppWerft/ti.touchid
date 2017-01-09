@@ -114,11 +114,10 @@ public class FingerPrintHelper extends
 	}
 
 	private void onHelp(String msg, int code) {
-		Log.e(TAG, "msg=" + msg + "   code=" + code);
 		if (callback != null && krollObject != null) {
 			KrollDict dict = new KrollDict();
 			dict.put("success", false);
-			dict.put("help", msg);
+			dict.put("message", msg);
 			dict.put("code", code);
 			callback.callAsync(krollObject, dict);
 		}
@@ -151,7 +150,6 @@ public class FingerPrintHelper extends
 
 	@Override
 	public void onAuthenticationHelp(int helpMsgId, CharSequence helpString) {
-		Log.w(TAG, helpString.toString());
 		onHelp(helpString.toString(), helpMsgId);
 
 	}
