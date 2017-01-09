@@ -33,7 +33,8 @@ import android.app.Activity;
 @Kroll.module(name = "Touchid", id = "ti.touchid")
 public class TouchidModule extends KrollModule {
 	public static final int PERMISSION_CODE_FINGERPRINT = 99;
-	public static String LCAT = "TouchId 👆";
+
+  public static String LCAT = "TouchId";
 
 	@Kroll.constant
 	public static final int SUCCESS = 0;
@@ -93,9 +94,7 @@ public class TouchidModule extends KrollModule {
 		if (params.containsKey("callback")) {
 			Object callback = params.get("callback");
 			if (callback instanceof KrollFunction) {
-				mfingerprintHelper.startListening((KrollFunction) callback,
-						getKrollObject());
-
+				mfingerprintHelper.startListening((KrollFunction)callback, getKrollObject());
 			}
 		}
 	}
@@ -113,7 +112,10 @@ public class TouchidModule extends KrollModule {
 
 	@Kroll.method
 	public boolean isSupported() {
-		return mfingerprintHelper.isDeviceSupported();
+		if (Build.VERSION.SDK_INT >= 23) {
+			return mfingerprintHelper.isDeviceSupported();
+		}
+		return false;
 	}
 
 	@Override
@@ -123,5 +125,4 @@ public class TouchidModule extends KrollModule {
 			mfingerprintHelper.stopListening();
 		}
 	}
-
 }
