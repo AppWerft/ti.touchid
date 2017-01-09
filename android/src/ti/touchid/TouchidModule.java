@@ -34,7 +34,7 @@ import android.app.Activity;
 public class TouchidModule extends KrollModule {
 	public static final int PERMISSION_CODE_FINGERPRINT = 99;
 
-  public static String LCAT = "TouchId";
+	public static String LCAT = "TouchId";
 
 	@Kroll.constant
 	public static final int SUCCESS = 0;
